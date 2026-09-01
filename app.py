@@ -94,6 +94,9 @@ if st.button("🚀 ANALIZAR PARTIDO", type="primary", use_container_width=True):
         recent_window=ventana,
         use_elo=usar_elo
     )
+    # 🩺 Analizar estado físico de los jugadores
+    physical_a = analyse_physical_status(player_a)
+    physical_b = analyse_physical_status(player_b)
 
     if not result["ok"]:
         st.error(result["message"])
@@ -214,6 +217,100 @@ if st.button("🚀 ANALIZAR PARTIDO", type="primary", use_container_width=True):
 
     st.markdown("## 🎯 Cómo leer el resultado")
     st.write(result["explanation"])
+    # =====================================================
+    # ESTADO FÍSICO
+    # =====================================================
+
+    st.markdown("## 🩺 Estado físico y noticias recientes")
+
+    phys1, phys2 = st.columns(2)
+
+    with phys1:
+
+        st.subheader(player_a)
+
+        st.metric(
+            "Riesgo físico",
+            f"{physical_a['score']}/100"
+        )
+
+        st.progress(physical_a["score"])
+
+        st.write(physical_a["status"])
+
+
+        if physical_a["high_alerts"]:
+
+            st.warning("⚠️ Alertas físicas importantes detectadas")
+
+            for article in physical_a["high_alerts"]:
+                st.write(
+                    f"🔴 {article['title']} "
+                    f"({article['source']})"
+                )
+
+
+        elif physical_a["medium_alerts"]:
+
+            st.warning("⚠️ Posibles alertas físicas")
+
+            for article in physical_a["medium_alerts"]:
+                st.write(
+                    f"🟠 {article['title']} "
+                    f"({article['source']})"
+                )
+
+
+        else:
+
+            st.success(
+                "🟢 No se han detectado alertas físicas recientes "
+                "en las fuentes analizadas."
+            )
+
+
+    with phys2:
+
+        st.subheader(player_b)
+
+        st.metric(
+            "Riesgo físico",
+            f"{physical_b['score']}/100"
+        )
+
+        st.progress(physical_b["score"])
+
+        st.write(physical_b["status"])
+
+
+        if physical_b["high_alerts"]:
+
+            st.warning("⚠️ Alertas físicas importantes detectadas")
+
+            for article in physical_b["high_alerts"]:
+                st.write(
+                    f"🔴 {article['title']} "
+                    f"({article['source']})"
+                )
+
+
+        elif physical_b["medium_alerts"]:
+
+            st.warning("⚠️ Posibles alertas físicas")
+
+            for article in physical_b["medium_alerts"]:
+                st.write(
+                    f"🟠 {article['title']} "
+                    f"({article['source']})"
+                )
+
+
+        else:
+
+            st.success(
+                "🟢 No se han detectado alertas físicas recientes "
+                "en las fuentes analizadas."
+            )
     st.markdown("## 🩺 Estado físico y noticias recientes")
 
     with st.spinner("Buscando noticias recientes sobre los jugadores..."):
@@ -235,125 +332,6 @@ if st.button("🚀 ANALIZAR PARTIDO", type="primary", use_container_width=True):
         )
 
 
-        if physical_a["alerts"]:
-
-            st.warning(
-                "⚠️ Se han encontrado noticias "
-                "potencialmente relacionadas con "
-                "lesiones o problemas físicos."
-            )
-
-
-            for article in physical_a["alerts"]:
-
-                st.write(
-                    "🚨 " + article["title"]
-                )
-
-                if article["published"]:
-
-                    st.caption(
-                        article["published"]
-                    )
-
-                if article["link"]:
-
-                    st.link_button(
-                        "Leer noticia",
-                        article["link"],
-                        use_container_width=True
-                    )
-
-        else:
-
-            st.success(
-                "No se han detectado alertas "
-                "físicas evidentes en las noticias encontradas."
-            )
-
-
-        with st.expander(
-            "📰 Ver noticias encontradas"
-        ):
-
-            for article in physical_a["articles"]:
-
-                st.write(
-                    "• " + article["title"]
-                )
-
-                if article["link"]:
-
-                    st.link_button(
-                        "Abrir noticia",
-                        article["link"]
-                    )
-
-
-
-    with col_b:
-
-        st.subheader(player_b)
-
-        st.write(
-            f"Estado detectado: "
-            f"**{physical_b['status']}**"
-        )
-
-
-        if physical_b["alerts"]:
-
-            st.warning(
-                "⚠️ Se han encontrado noticias "
-                "potencialmente relacionadas con "
-                "lesiones o problemas físicos."
-            )
-
-
-            for article in physical_b["alerts"]:
-
-                st.write(
-                    "🚨 " + article["title"]
-                )
-
-                if article["published"]:
-
-                    st.caption(
-                        article["published"]
-                    )
-
-                if article["link"]:
-
-                    st.link_button(
-                        "Leer noticia",
-                        article["link"],
-                        use_container_width=True
-                    )
-
-        else:
-
-            st.success(
-                "No se han detectado alertas "
-                "físicas evidentes en las noticias encontradas."
-            )
-
-
-        with st.expander(
-            "📰 Ver noticias encontradas"
-        ):
-
-            for article in physical_b["articles"]:
-
-                st.write(
-                    "• " + article["title"]
-                )
-
-                if article["link"]:
-
-                    st.link_button(
-                        "Abrir noticia",
-                        article["link"]
-                    )
 
 st.divider()
 st.caption("⚠️ Herramienta educativa y estadística. Las probabilidades son estimaciones, no garantías de resultado ni de beneficio económico.")

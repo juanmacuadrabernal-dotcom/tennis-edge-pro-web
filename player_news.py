@@ -1,4 +1,6 @@
 import feedparser
+import requests
+
 from urllib.parse import quote, urlparse
 from datetime import datetime, timezone
 
@@ -18,126 +20,154 @@ TRUSTED_SOURCES = {
 
 
 # =========================================================
-# PALABRAS DE ALERTA FÍSICA
+# PALABRAS DE RIESGO ALTO
 # =========================================================
 
 HIGH_RISK_KEYWORDS = [
-    "retired",
-    "retirement",
-    "withdraw",
-    "withdrawal",
-    "withdraws",
-    "withdrew",
-    "ruled out",
-    "surgery",
-    "undergoes surgery",
-    "medical timeout",
-    "medical time-out",
-    "medical treatment",
-    "injury forces",
-    "forced to retire",
-    "forced to withdraw",
-    "retirada",
-    "abandono",
-    "se retira",
-    "cirugía",
-    "operación",
-]
-
-
-MEDIUM_RISK_KEYWORDS = [
     "injury",
     "injured",
-    "pain",
-    "fitness concern",
-    "physical problem",
-    "physio",
-    "physiotherapist",
+    "withdraw",
+    "withdrawal",
+    "withdrew",
+    "retire",
+    "retired",
+    "retires",
+    "medical timeout",
+    "medical time-out",
     "treatment",
-    "cramp",
-    "cramps",
-    "hamstring",
-    "wrist",
-    "ankle",
-    "knee",
-    "back problem",
-    "back pain",
-    "shoulder",
-    "illness",
-    "sick",
-    "fitness",
-    "molestia",
-    "dolor",
-    "lesión",
-    "lesionado",
-    "problema físico",
-]
-
-
-RECOVERY_KEYWORDS = [
-    "returned from injury",
-    "returns from injury",
-    "back from injury",
-    "recovered",
-    "fully fit",
-    "fit again",
-    "recovery",
-    "returns after injury",
-    "regresa tras lesión",
-    "recuperado",
-    "vuelve tras lesión",
+    "wrist injury",
+    "ankle injury",
+    "knee injury",
+    "shoulder injury",
+    "back injury",
 ]
 
 
 # =========================================================
-# COMPROBAR SI EL DOMINIO ES UNA FUENTE PERMITIDA
+# PALABRAS DE RIESGO MEDIO
+# =========================================================
+
+MEDIUM_RISK_KEYWORDS = [
+    "fitness",
+    "physical problem",
+    "physical issue",
+    "struggling",
+    "pain",
+    "discomfort",
+    "cramp",
+    "cramps",
+    "fatigue",
+    "tired",
+    "illness",
+    "sick",
+]
+
+
+# =========================================================
+# PALABRAS DE RECUPERACIÓN
+# =========================================================
+
+RECOVERY_KEYWORDS = [
+    "recovered",
+    "recovery",
+    "fit again",
+    "back to fitness",
+    "returns",
+    "returned",
+    "return to action",
+    "ready to play",
+    "fully fit",
+    "without pain",
+    "pain-free",
+    "comeback",
+]
+
+
+# =========================================================
+# COMPROBAR SI LA NOTICIA ES DEL JUGADOR
+# =========================================================
+
+def is_player_match(title, player_name):
+
+    title_lower = title.lower()
+    player_lower = player_name.lower()
+
+    if player_lower in title_lower:
+        return True
+
+    player_parts = player_lower.split()
+
+    if len(player_parts) >= 2:
+
+        first_name = player_parts[0]
+        last_name = player_parts[-1]
+
+        if first_name in title_lower and last_name in title_lower:
+            return True
+
+        if last_name in title_lower:
+            return True
+
+    return False
+
+
+# =========================================================
+# IDENTIFICAR FUENTE POR URL
 # =========================================================
 
 def get_source_name(url):
 
     try:
-        domain = urlparse(url).netloc.lower()
 
+        domain = urlparse(url).netloc.lower()
         domain = domain.replace("www.", "")
 
         for allowed_domain, source_name in TRUSTED_SOURCES.items():
 
-            if domain == allowed_domain or domain.endswith("." + allowed_domain):
+            if (
+                domain == allowed_domain
+                or domain.endswith("." + allowed_domain)
+            ):
 
                 return source_name
 
     except Exception:
+
         pass
 
     return None
 
 
 # =========================================================
-# COMPROBAR QUE LA NOTICIA ES REALMENTE DEL JUGADOR
+# IDENTIFICAR FUENTE POR NOMBRE
 # =========================================================
 
-def is_player_match(text, player_name):
+def get_source_from_text(source_text):
 
-    text = text.lower()
+    if not source_text:
+        return None
 
-    player_name = player_name.lower().strip()
+    source_lower = source_text.lower()
 
-    name_parts = player_name.split()
+    trusted_names = {
+        "atp tour": "ATP Tour",
+        "reuters": "Reuters",
+        "bbc sport": "BBC Sport",
+        "bbc": "BBC Sport",
+        "associated press": "Associated Press",
+        "ap news": "Associated Press",
+    }
 
-    # Deben aparecer nombre y apellido cuando hay más de una palabra
-    if len(name_parts) >= 2:
+    for trusted_text, trusted_source in trusted_names.items():
 
-        first_name = name_parts[0]
-        last_name = name_parts[-1]
+        if trusted_text in source_lower:
+            return trusted_source
 
-        return first_name in text and last_name in text
-
-    # Para nombres de una sola palabra
-    return player_name in text
+    return None
 
 
 # =========================================================
-# BUSCAR NOTICIAS SOLO EN FUENTES FIABLES
+# BUSCAR NOTICIAS DEL JUGADOR
 # =========================================================
 
 def search_player_news(player_name, max_results=15):
@@ -155,6 +185,7 @@ def search_player_news(player_name, max_results=15):
     seen_urls = set()
     seen_titles = set()
 
+
     for query in queries:
 
         url = (
@@ -164,20 +195,68 @@ def search_player_news(player_name, max_results=15):
         )
 
         try:
-            feed = feedparser.parse(url)
 
-        except Exception:
+            response = requests.get(
+                url,
+                headers={
+                    "User-Agent": (
+                        "Mozilla/5.0 "
+                        "(Windows NT 10.0; Win64; x64) "
+                        "AppleWebKit/537.36 "
+                        "(KHTML, like Gecko) "
+                        "Chrome/120 Safari/537.36"
+                    )
+                },
+                timeout=15
+            )
+
+            print(
+                "GOOGLE NEWS STATUS:",
+                response.status_code
+            )
+
+            print(
+                "BUSCANDO:",
+                query
+            )
+
+            feed = feedparser.parse(
+                response.content
+            )
+
+            print(
+                "NOTICIAS ENCONTRADAS:",
+                len(feed.entries)
+            )
+
+
+        except Exception as error:
+
+            print(
+                "ERROR BUSCANDO NOTICIAS:",
+                error
+            )
 
             continue
 
 
         for entry in feed.entries:
 
-            title = entry.get("title", "").strip()
+            title = entry.get(
+                "title",
+                ""
+            ).strip()
 
-            link = entry.get("link", "").strip()
+            link = entry.get(
+                "link",
+                ""
+            ).strip()
 
-            published = entry.get("published", "").strip()
+            published = entry.get(
+                "published",
+                ""
+            ).strip()
+
 
             if not title or not link:
 
@@ -188,29 +267,59 @@ def search_player_news(player_name, max_results=15):
             # COMPROBAR QUE LA NOTICIA ES DEL JUGADOR
             # -------------------------------------------------
 
-            if not is_player_match(title, player_name):
+            if not is_player_match(
+                title,
+                player_name
+            ):
 
                 continue
 
 
             # -------------------------------------------------
-            # OBTENER LA URL FINAL
+            # COMPROBAR FUENTE
             # -------------------------------------------------
 
-            # Obtener la fuente indicada por Google News
+            source_info = entry.get(
+                "source",
+                {}
+            )
+
             source_name = None
 
-            source_info = entry.get("source", {})
 
             if source_info:
-                source_url = source_info.get("href", "")
-                source_name = get_source_name(source_url)
 
-            # Si no conseguimos identificar una fuente fiable,
-            # descartamos la noticia
+                source_url = source_info.get(
+                    "href",
+                    ""
+                )
+
+                source_text = source_info.get(
+                    "title",
+                    ""
+                ).strip()
+
+
+                source_name = get_source_name(
+                    source_url
+                )
+
+
+                if source_name is None:
+
+                    source_name = get_source_from_text(
+                        source_text
+                    )
+
+
+            # -------------------------------------------------
+            # SOLO FUENTES FIABLES
+            # -------------------------------------------------
+
             if source_name is None:
+
                 continue
-      
+
 
             # -------------------------------------------------
             # EVITAR DUPLICADOS
@@ -218,9 +327,11 @@ def search_player_news(player_name, max_results=15):
 
             title_key = title.lower()
 
+
             if link in seen_urls:
 
                 continue
+
 
             if title_key in seen_titles:
 
@@ -228,7 +339,6 @@ def search_player_news(player_name, max_results=15):
 
 
             seen_urls.add(link)
-
             seen_titles.add(title_key)
 
 
@@ -251,17 +361,21 @@ def analyse_physical_status(player_name):
 
     articles = search_player_news(player_name)
 
-    score = 0
+    now = datetime.now(timezone.utc)
 
     high_alerts = []
     medium_alerts = []
     recovery_alerts = []
 
-    now = datetime.now(timezone.utc)
+    # Aquí guardaremos solo el riesgo más importante
+    # de cada problema físico
+    injury_events = {}
+
+    player_last_name = player_name.lower().split()[-1]
 
 
     # =====================================================
-    # CALCULAR CUÁNTOS DÍAS TIENE UNA NOTICIA
+    # OBTENER ANTIGÜEDAD DE LA NOTICIA
     # =====================================================
 
     def get_age_days(article):
@@ -271,6 +385,7 @@ def analyse_physical_status(player_name):
             published = article.get("published", "")
 
             if not published:
+
                 return 999
 
             parsed = datetime.strptime(
@@ -278,7 +393,9 @@ def analyse_physical_status(player_name):
                 "%a, %d %b %Y %H:%M:%S"
             )
 
-            parsed = parsed.replace(tzinfo=timezone.utc)
+            parsed = parsed.replace(
+                tzinfo=timezone.utc
+            )
 
             return max(
                 0,
@@ -291,25 +408,121 @@ def analyse_physical_status(player_name):
 
 
     # =====================================================
-    # PESO SEGÚN ANTIGÜEDAD DE LA NOTICIA
+    # PESO SEGÚN ANTIGÜEDAD
     # =====================================================
 
-    def age_multiplier(days):
+    def get_high_points(days):
 
         if days <= 7:
-            return 1.0
+            return 35
 
         elif days <= 30:
-            return 0.75
+            return 25
 
         elif days <= 60:
-            return 0.50
+            return 15
 
         elif days <= 120:
-            return 0.25
+            return 8
 
         else:
-            return 0.10
+            return 3
+
+
+    def get_medium_points(days):
+
+        if days <= 7:
+            return 15
+
+        elif days <= 30:
+            return 10
+
+        elif days <= 60:
+            return 6
+
+        elif days <= 120:
+            return 3
+
+        else:
+            return 1
+
+
+    # =====================================================
+    # DETECTAR TIPO DE EVENTO
+    # =====================================================
+
+    def get_injury_type(title):
+
+        injury_types = {
+
+            "wrist": "wrist",
+            "knee": "knee",
+            "ankle": "ankle",
+            "shoulder": "shoulder",
+            "back": "back",
+            "elbow": "elbow",
+            "hip": "hip",
+
+        }
+
+        for keyword, injury_type in injury_types.items():
+
+            if keyword in title:
+
+                return injury_type
+
+
+        # Si habla de retirada pero no indica lesión
+        if "withdraw" in title:
+
+            return "withdrawal"
+
+        if "retire" in title:
+
+            return "retirement"
+
+        if "medical timeout" in title:
+
+            return "medical"
+
+        if "injury" in title:
+
+            return "injury"
+
+        return None
+
+
+    # =====================================================
+    # COMPROBAR SI EL JUGADOR ES EL QUE SUFRE EL PROBLEMA
+    # =====================================================
+
+    def is_player_problem(title):
+
+        # Casos muy claros donde OTRO jugador se retira
+        other_player_patterns = [
+
+            "sinner retires",
+            "djokovic retires",
+            "zverev retires",
+            "nadal retires",
+            "federer retires",
+
+        ]
+
+        for pattern in other_player_patterns:
+
+            if pattern in title and player_last_name not in pattern:
+
+                return False
+
+
+        # El apellido del jugador debe aparecer
+        if player_last_name not in title:
+
+            return False
+
+
+        return True
 
 
     # =====================================================
@@ -322,32 +535,60 @@ def analyse_physical_status(player_name):
 
         days_old = get_age_days(article)
 
-        multiplier = age_multiplier(days_old)
+        article["days_old"] = days_old
 
 
-        # ----------------------------------------------
-        # BUSCAR RECUPERACIÓN
-        # ----------------------------------------------
+        # -----------------------------------------------
+        # EL TITULAR DEBE REFERIRSE AL JUGADOR
+        # -----------------------------------------------
+
+        if player_last_name not in title:
+
+            continue
+
+
+        # -----------------------------------------------
+        # CASOS QUE NO DEBEN CONTAR COMO RIESGO
+        # -----------------------------------------------
+
+        if (
+            "nothing serious" in title
+            or "just for precaution" in title
+        ):
+
+            article["risk"] = "none"
+            article["points"] = 0
+
+            continue
+
+
+        # -----------------------------------------------
+        # DETECTAR RECUPERACIÓN
+        # -----------------------------------------------
 
         recovery_match = any(
             keyword in title
             for keyword in RECOVERY_KEYWORDS
         )
 
+        if (
+            "return" in title
+            or "returns" in title
+            or "returned" in title
+            or "back from injury" in title
+        ):
 
-        # ----------------------------------------------
-        # BUSCAR RIESGO ALTO
-        # ----------------------------------------------
+            recovery_match = True
+
+
+        # -----------------------------------------------
+        # DETECTAR RIESGO
+        # -----------------------------------------------
 
         high_match = any(
             keyword in title
             for keyword in HIGH_RISK_KEYWORDS
         )
-
-
-        # ----------------------------------------------
-        # BUSCAR RIESGO MEDIO
-        # ----------------------------------------------
 
         medium_match = any(
             keyword in title
@@ -355,68 +596,133 @@ def analyse_physical_status(player_name):
         )
 
 
-        # ----------------------------------------------
-        # CLASIFICAR
-        # ----------------------------------------------
+        # -----------------------------------------------
+        # IDENTIFICAR EL EVENTO
+        # -----------------------------------------------
+
+        injury_type = get_injury_type(title)
+
+
+        # -----------------------------------------------
+        # RECUPERACIÓN
+        # -----------------------------------------------
+
+        if recovery_match:
+
+            article["risk"] = "recovery"
+            article["points"] = 0
+
+            recovery_alerts.append(article)
+
+            continue
+
+
+        # -----------------------------------------------
+        # RIESGO ALTO
+        # -----------------------------------------------
 
         if high_match:
 
-            points = round(35 * multiplier)
-
-            score += points
+            points = get_high_points(days_old)
 
             article["risk"] = "high"
-
             article["points"] = points
-
-            article["days_old"] = days_old
 
             high_alerts.append(article)
 
 
+        # -----------------------------------------------
+        # RIESGO MEDIO
+        # -----------------------------------------------
+
         elif medium_match:
 
-            points = round(15 * multiplier)
-
-            score += points
+            points = get_medium_points(days_old)
 
             article["risk"] = "medium"
-
             article["points"] = points
 
-            article["days_old"] = days_old
-
             medium_alerts.append(article)
-
-
-        elif recovery_match:
-
-            # Las señales de recuperación restan riesgo
-            points = round(20 * multiplier)
-
-            score -= points
-
-            article["risk"] = "recovery"
-
-            article["points"] = -points
-
-            article["days_old"] = days_old
-
-            recovery_alerts.append(article)
-
 
         else:
 
             article["risk"] = "none"
+            article["points"] = 0
 
-            article["days_old"] = days_old
+            continue
+
+
+        # -----------------------------------------------
+        # DESCARTAR PROBLEMAS DE OTROS JUGADORES
+        # -----------------------------------------------
+
+        if not is_player_problem(title):
+
+            article["points"] = 0
+
+            continue
+
+
+        # -----------------------------------------------
+        # AGRUPAR EL MISMO PROBLEMA
+        # -----------------------------------------------
+
+        if injury_type is None:
+
+            injury_type = "general"
+
+
+        if injury_type not in injury_events:
+
+            injury_events[injury_type] = {
+                "points": article["points"],
+                "article": article
+            }
+
+        else:
+
+            # Solo guardamos la noticia con mayor riesgo
+            if article["points"] > injury_events[injury_type]["points"]:
+
+                injury_events[injury_type] = {
+                    "points": article["points"],
+                    "article": article
+                }
 
 
     # =====================================================
-    # EVITAR SCORE NEGATIVO O SUPERIOR A 100
+    # CALCULAR PUNTUACIÓN FINAL
     # =====================================================
 
-    score = max(0, min(score, 100))
+    score = sum(
+        event["points"]
+        for event in injury_events.values()
+    )
+
+
+    # =====================================================
+    # RECUPERACIÓN RECIENTE
+    # =====================================================
+
+    recent_recovery = any(
+        article["days_old"] <= 90
+        for article in recovery_alerts
+    )
+
+
+    if recent_recovery:
+
+        score -= 15
+
+
+    # =====================================================
+    # LÍMITES
+    # =====================================================
+
+    score = max(
+        0,
+        min(score, 100)
+    )
 
 
     # =====================================================
@@ -443,6 +749,10 @@ def analyse_physical_status(player_name):
         status = "🟢 RIESGO BAJO"
         label = "bajo"
 
+
+    # =====================================================
+    # RESULTADO
+    # =====================================================
 
     return {
         "player": player_name,

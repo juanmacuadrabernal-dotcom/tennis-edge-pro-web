@@ -1,3 +1,4 @@
+# BUILD: Tennis Edge Pro V13.9 · MENU INDESTRUCTIBLE
 import os
 import html
 import textwrap
@@ -65,11 +66,16 @@ def aplicar_estilo_premium():
             color: var(--tep-text);
         }
 
-        /* Ocultamos el chrome de Streamlit para que se sienta como una app propia. */
+        /* V13.9: no eliminamos el header.
+           Antes lo dejábamos a altura 0 y al cerrar el sidebar podíamos
+           perder también el control nativo para recuperarlo. */
         header[data-testid="stHeader"] {
-            height: 0 !important;
-            min-height: 0 !important;
-            background: transparent !important;
+            height: 3rem !important;
+            min-height: 3rem !important;
+            background: rgba(6,17,29,.96) !important;
+            border-bottom: 1px solid rgba(112,169,216,.10) !important;
+            backdrop-filter: blur(12px) !important;
+            -webkit-backdrop-filter: blur(12px) !important;
         }
         [data-testid="stToolbar"],
         [data-testid="stDecoration"],
@@ -350,6 +356,90 @@ def aplicar_estilo_premium():
             color:#f5fcff !important;
             border-radius:11px !important;
             box-shadow:none !important;
+        }
+
+
+        /* =====================================================
+           V13.9 · MENÚ INDESTRUCTIBLE
+           Menú HTML nativo del navegador, totalmente independiente
+           del sidebar y de los selectores internos de Streamlit.
+           ===================================================== */
+        .tep-fixed-menu {
+            position: sticky;
+            top: .4rem;
+            z-index: 1000010;
+            width: min(100%, 430px);
+            margin: 0 0 .9rem 0;
+        }
+
+        .tep-fixed-menu details {
+            border: 1px solid rgba(32,214,232,.34);
+            border-radius: 14px;
+            background: rgba(7,24,39,.98);
+            box-shadow: 0 10px 28px rgba(0,0,0,.24);
+            overflow: hidden;
+            backdrop-filter: blur(14px);
+            -webkit-backdrop-filter: blur(14px);
+        }
+
+        .tep-fixed-menu summary {
+            cursor: pointer;
+            list-style: none;
+            padding: .78rem .9rem;
+            color: #f5fcff;
+            font-weight: 850;
+            font-size: .86rem;
+            user-select: none;
+            -webkit-user-select: none;
+        }
+
+        .tep-fixed-menu summary::-webkit-details-marker {
+            display: none;
+        }
+
+        .tep-fixed-menu summary::after {
+            content: "▾";
+            float: right;
+            color: #20d6e8;
+            font-size: 1rem;
+        }
+
+        .tep-fixed-menu details[open] summary::after {
+            content: "▴";
+        }
+
+        .tep-fixed-menu-links {
+            display: grid;
+            gap: .36rem;
+            padding: .2rem .58rem .65rem;
+            border-top: 1px solid rgba(112,169,216,.11);
+        }
+
+        .tep-fixed-menu-links a {
+            display: block;
+            padding: .72rem .78rem;
+            border-radius: 10px;
+            color: #b8c7d4 !important;
+            text-decoration: none !important;
+            font-weight: 720;
+            font-size: .82rem;
+            background: rgba(255,255,255,.018);
+            border: 1px solid transparent;
+        }
+
+        .tep-fixed-menu-links a:hover,
+        .tep-fixed-menu-links a.tep-current {
+            color: #f4fdff !important;
+            background: linear-gradient(90deg,rgba(0,151,196,.23),rgba(0,111,181,.12));
+            border-color: rgba(32,214,232,.40);
+        }
+
+        .tep-fixed-menu-version {
+            color: #20d6e8;
+            font-size: .62rem;
+            font-weight: 850;
+            letter-spacing: .06em;
+            margin-left: .35rem;
         }
 
         @media(max-width:1250px){
@@ -3225,7 +3315,7 @@ def render_resultados_live_page(df):
 
 
 # =========================================================
-# V13.8 · NAVEGACIÓN MÓVIL + REAPERTURA SIDEBAR
+# V13.9 · NAVEGACIÓN INDESTRUCTIBLE
 # =========================================================
 NAV_OPTIONS = [
     "⌂  Dashboard",
@@ -3236,35 +3326,89 @@ NAV_OPTIONS = [
     "◈  Modelo / Analizador",
 ]
 
-if "tep_nav" not in st.session_state:
-    st.session_state["tep_nav"] = NAV_OPTIONS[0]
+PAGE_SLUGS = {
+    "⌂  Dashboard": "dashboard",
+    "▣  Próximos partidos": "partidos",
+    "☆  Top Picks": "top-picks",
+    "▥  Rendimiento": "rendimiento",
+    "◉  Resultados live": "resultados-live",
+    "◈  Modelo / Analizador": "analizador",
+}
 
-if "tep_nav_mobile" not in st.session_state:
-    st.session_state["tep_nav_mobile"] = st.session_state["tep_nav"]
+SLUG_TO_PAGE = {
+    slug: page
+    for page, slug in PAGE_SLUGS.items()
+}
 
+if "tep_nav_page" not in st.session_state:
+    st.session_state["tep_nav_page"] = NAV_OPTIONS[0]
 
-def _sync_nav_from_mobile():
-    st.session_state["tep_nav"] = st.session_state["tep_nav_mobile"]
+# Si el usuario ha pulsado un enlace del menú HTML, el parámetro ?page=
+# manda sobre la sesión. Funciona en Safari/Chrome sin depender del sidebar.
+try:
+    _query_page = st.query_params.get("page", "")
+except Exception:
+    _legacy_qs = st.experimental_get_query_params()
+    _query_page = _legacy_qs.get("page", [""])[0]
 
+if isinstance(_query_page, list):
+    _query_page = _query_page[0] if _query_page else ""
 
-def _sync_nav_from_sidebar():
-    st.session_state["tep_nav_mobile"] = st.session_state["tep_nav"]
+_query_page = str(_query_page or "").strip()
 
+if _query_page in SLUG_TO_PAGE:
+    st.session_state["tep_nav_page"] = SLUG_TO_PAGE[_query_page]
+
+pagina_actual = st.session_state["tep_nav_page"]
+_current_slug = PAGE_SLUGS.get(
+    pagina_actual,
+    "dashboard",
+)
+
+_nav_links = []
+for _page in NAV_OPTIONS:
+    _slug = PAGE_SLUGS[_page]
+    _active = " tep-current" if _slug == _current_slug else ""
+    _nav_links.append(
+        f'<a class="{_active.strip()}" href="?page={_slug}" target="_self">{html.escape(_page)}</a>'
+    )
 
 st.markdown(
-    '<div style="font-size:.72rem;font-weight:800;color:#20d6e8;'
-    'letter-spacing:.06em;margin:.05rem 0 .25rem;">'
-    '📱 V13.8 · NAVEGACIÓN</div>',
+    _html_block(
+        f"""
+        <div class="tep-fixed-menu">
+          <details>
+            <summary>
+              ☰ MENÚ · {html.escape(pagina_actual)}
+              <span class="tep-fixed-menu-version">V13.9</span>
+            </summary>
+            <div class="tep-fixed-menu-links">
+              {''.join(_nav_links)}
+            </div>
+          </details>
+        </div>
+        """
+    ),
     unsafe_allow_html=True,
 )
 
-st.selectbox(
-    "☰  MENÚ · Ir a",
-    NAV_OPTIONS,
-    key="tep_nav_mobile",
-    on_change=_sync_nav_from_mobile,
-    label_visibility="visible",
-)
+
+def _ir_a_pagina_sidebar(page):
+    st.session_state["tep_nav_page"] = page
+
+    slug = PAGE_SLUGS.get(
+        page,
+        "dashboard",
+    )
+
+    try:
+        st.query_params["page"] = slug
+    except Exception:
+        st.experimental_set_query_params(
+            page=slug
+        )
+
+    st.rerun()
 
 
 with st.sidebar:
@@ -3278,13 +3422,25 @@ with st.sidebar:
         unsafe_allow_html=True
     )
 
-    pagina_actual = st.radio(
-        "Navegación",
-        NAV_OPTIONS,
-        label_visibility="collapsed",
-        key="tep_nav",
-        on_change=_sync_nav_from_sidebar,
-    )
+    st.caption("Navegación")
+
+    for _idx, _page in enumerate(NAV_OPTIONS):
+        _is_current = (
+            _page
+            ==
+            st.session_state["tep_nav_page"]
+        )
+
+        if st.button(
+            _page,
+            key=f"tep_sidebar_nav_{_idx}",
+            use_container_width=True,
+            type="primary" if _is_current else "secondary",
+        ):
+            _ir_a_pagina_sidebar(
+                _page
+            )
+
     last = get_last_update() or "Sin actualizar"
 
     if st.button(

@@ -317,8 +317,40 @@ def aplicar_estilo_premium():
         .tep-section-subhead h3 {margin:0!important;font-size:.91rem!important;}
         .tep-note {font-size:.65rem;color:#70869a;}
 
-        /* El selector móvil existe en el DOM pero se oculta en escritorio. */
-        .st-key-tep_nav_mobile {display:none;}
+        /* =====================================================
+           V13.7 · MENÚ UNIVERSAL
+           Lo dejamos visible SIEMPRE. Así no dependemos del ancho
+           que Safari/Streamlit reporte ni del botón nativo del sidebar.
+           ===================================================== */
+        .st-key-tep_nav_mobile {
+            display:block !important;
+            position:sticky !important;
+            top:.35rem !important;
+            z-index:999999 !important;
+            margin:0 0 .95rem 0 !important;
+            padding:.62rem .72rem .68rem !important;
+            border:1px solid rgba(32,214,232,.28) !important;
+            border-radius:14px !important;
+            background:rgba(7,24,39,.97) !important;
+            box-shadow:0 10px 28px rgba(0,0,0,.22) !important;
+            backdrop-filter:blur(14px) !important;
+            -webkit-backdrop-filter:blur(14px) !important;
+        }
+
+        .st-key-tep_nav_mobile label p {
+            color:#dff8ff !important;
+            font-weight:800 !important;
+            font-size:.78rem !important;
+        }
+
+        .st-key-tep_nav_mobile div[data-baseweb="select"] > div {
+            min-height:46px !important;
+            border:1px solid rgba(32,214,232,.34) !important;
+            background:linear-gradient(145deg,rgba(13,49,72,.98),rgba(7,31,50,.98)) !important;
+            color:#f5fcff !important;
+            border-radius:11px !important;
+            box-shadow:none !important;
+        }
 
         @media(max-width:1250px){
             .tep-dash-grid{grid-template-columns:1fr 1.25fr;}
@@ -3147,7 +3179,7 @@ def render_resultados_live_page(df):
 
 
 # =========================================================
-# V13.6 · NAVEGACIÓN RESPONSIVE REAL
+# V13.7 · NAVEGACIÓN UNIVERSAL REAL
 # =========================================================
 NAV_OPTIONS = [
     "⌂  Dashboard",
@@ -3172,6 +3204,13 @@ def _sync_nav_from_mobile():
 def _sync_nav_from_sidebar():
     st.session_state["tep_nav_mobile"] = st.session_state["tep_nav"]
 
+
+st.markdown(
+    '<div style="font-size:.72rem;font-weight:800;color:#20d6e8;'
+    'letter-spacing:.06em;margin:.05rem 0 .25rem;">'
+    '📱 V13.7 · NAVEGACIÓN</div>',
+    unsafe_allow_html=True,
+)
 
 st.selectbox(
     "☰  MENÚ · Ir a",

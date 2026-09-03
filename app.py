@@ -317,6 +317,9 @@ def aplicar_estilo_premium():
         .tep-section-subhead h3 {margin:0!important;font-size:.91rem!important;}
         .tep-note {font-size:.65rem;color:#70869a;}
 
+        /* El selector móvil existe en el DOM pero se oculta en escritorio. */
+        .st-key-tep_nav_mobile {display:none;}
+
         @media(max-width:1250px){
             .tep-dash-grid{grid-template-columns:1fr 1.25fr;}
             .tep-right-stack{grid-column:1/-1;grid-template-columns:1fr 1fr;grid-template-rows:auto;}
@@ -328,52 +331,15 @@ def aplicar_estilo_premium():
             .tep-pick-head > :last-child,.tep-pick-row > :last-child{display:none;}
 
             /* =====================================================
-               V13.5 · NAVEGACIÓN MÓVIL
-               En escritorio ocultamos el chrome de Streamlit, pero
-               en móvil necesitamos conservar el control nativo que
-               abre/cierra el sidebar.
+               V13.6 · NAVEGACIÓN MÓVIL REAL
+               No dependemos del botón interno de Streamlit, porque
+               su selector cambia entre versiones de Community Cloud.
+               Mostramos un selector propio, siempre funcional.
                ===================================================== */
             header[data-testid="stHeader"] {
-                display:block !important;
-                height:3.45rem !important;
-                min-height:3.45rem !important;
-                background:rgba(6,17,29,.96) !important;
-                border-bottom:1px solid rgba(112,169,216,.14) !important;
-                backdrop-filter:blur(12px);
-                -webkit-backdrop-filter:blur(12px);
-                z-index:999998 !important;
-            }
-
-            [data-testid="stSidebarCollapsedControl"],
-            [data-testid="stSidebarCollapseButton"] {
-                display:flex !important;
-                visibility:visible !important;
-                opacity:1 !important;
-                pointer-events:auto !important;
-                z-index:1000001 !important;
-            }
-
-            [data-testid="stSidebarCollapsedControl"] {
-                position:fixed !important;
-                top:.48rem !important;
-                left:.55rem !important;
-            }
-
-            [data-testid="stSidebarCollapsedControl"] button,
-            [data-testid="stSidebarCollapseButton"] button,
-            button[data-testid="stSidebarCollapseButton"] {
-                display:flex !important;
-                align-items:center !important;
-                justify-content:center !important;
-                width:42px !important;
-                height:42px !important;
-                min-width:42px !important;
-                min-height:42px !important;
-                border-radius:11px !important;
-                border:1px solid rgba(32,214,232,.34) !important;
-                background:linear-gradient(145deg,rgba(13,49,72,.97),rgba(7,31,50,.97)) !important;
-                color:#f4fbff !important;
-                box-shadow:0 8px 24px rgba(0,0,0,.22) !important;
+                height:0 !important;
+                min-height:0 !important;
+                background:transparent !important;
             }
 
             [data-testid="stSidebar"] {
@@ -383,15 +349,41 @@ def aplicar_estilo_premium():
                 box-shadow:18px 0 48px rgba(0,0,0,.34) !important;
             }
 
-            [data-testid="stSidebar"] > div:first-child {
-                padding-top:.65rem !important;
-            }
-
             .block-container {
-                padding-top:4.25rem !important;
+                padding-top:.8rem !important;
                 padding-left:.9rem !important;
                 padding-right:.9rem !important;
                 padding-bottom:3rem !important;
+            }
+
+            .st-key-tep_nav_mobile {
+                display:block !important;
+                position:sticky !important;
+                top:.35rem !important;
+                z-index:999999 !important;
+                margin:0 0 .95rem 0 !important;
+                padding:.62rem .72rem .68rem !important;
+                border:1px solid rgba(32,214,232,.25) !important;
+                border-radius:14px !important;
+                background:rgba(7,24,39,.96) !important;
+                box-shadow:0 10px 28px rgba(0,0,0,.24) !important;
+                backdrop-filter:blur(14px) !important;
+                -webkit-backdrop-filter:blur(14px) !important;
+            }
+
+            .st-key-tep_nav_mobile label p {
+                color:#dff8ff !important;
+                font-weight:800 !important;
+                font-size:.78rem !important;
+            }
+
+            .st-key-tep_nav_mobile div[data-baseweb="select"] > div {
+                min-height:46px !important;
+                border:1px solid rgba(32,214,232,.34) !important;
+                background:linear-gradient(145deg,rgba(13,49,72,.98),rgba(7,31,50,.98)) !important;
+                color:#f5fcff !important;
+                border-radius:11px !important;
+                box-shadow:none !important;
             }
 
             .tep-title{font-size:1.65rem;}
@@ -3154,6 +3146,42 @@ def render_resultados_live_page(df):
     )
 
 
+# =========================================================
+# V13.6 · NAVEGACIÓN RESPONSIVE REAL
+# =========================================================
+NAV_OPTIONS = [
+    "⌂  Dashboard",
+    "▣  Próximos partidos",
+    "☆  Top Picks",
+    "▥  Rendimiento",
+    "◉  Resultados live",
+    "◈  Modelo / Analizador",
+]
+
+if "tep_nav" not in st.session_state:
+    st.session_state["tep_nav"] = NAV_OPTIONS[0]
+
+if "tep_nav_mobile" not in st.session_state:
+    st.session_state["tep_nav_mobile"] = st.session_state["tep_nav"]
+
+
+def _sync_nav_from_mobile():
+    st.session_state["tep_nav"] = st.session_state["tep_nav_mobile"]
+
+
+def _sync_nav_from_sidebar():
+    st.session_state["tep_nav_mobile"] = st.session_state["tep_nav"]
+
+
+st.selectbox(
+    "☰  MENÚ · Ir a",
+    NAV_OPTIONS,
+    key="tep_nav_mobile",
+    on_change=_sync_nav_from_mobile,
+    label_visibility="visible",
+)
+
+
 with st.sidebar:
     st.markdown(
         """
@@ -3167,16 +3195,10 @@ with st.sidebar:
 
     pagina_actual = st.radio(
         "Navegación",
-        [
-            "⌂  Dashboard",
-            "▣  Próximos partidos",
-            "☆  Top Picks",
-            "▥  Rendimiento",
-            "◉  Resultados live",
-            "◈  Modelo / Analizador",
-        ],
+        NAV_OPTIONS,
         label_visibility="collapsed",
         key="tep_nav",
+        on_change=_sync_nav_from_sidebar,
     )
     last = get_last_update() or "Sin actualizar"
 

@@ -368,10 +368,56 @@ def aplicar_estilo_premium():
                su selector cambia entre versiones de Community Cloud.
                Mostramos un selector propio, siempre funcional.
                ===================================================== */
+            /* V13.8:
+               En móvil NO eliminamos el header por completo.
+               Streamlit coloca aquí el control que reaparece cuando
+               el usuario colapsa el sidebar. */
             header[data-testid="stHeader"] {
-                height:0 !important;
-                min-height:0 !important;
-                background:transparent !important;
+                display:block !important;
+                height:3.25rem !important;
+                min-height:3.25rem !important;
+                background:rgba(6,17,29,.96) !important;
+                border-bottom:1px solid rgba(112,169,216,.12) !important;
+                backdrop-filter:blur(14px) !important;
+                -webkit-backdrop-filter:blur(14px) !important;
+                z-index:999998 !important;
+            }
+
+            /* El toolbar sigue oculto, pero conservamos SIEMPRE
+               el botón de reabrir el menú lateral. Incluimos ambos
+               testids usados por distintas versiones de Streamlit. */
+            [data-testid="stSidebarCollapsedControl"],
+            [data-testid="collapsedControl"] {
+                display:flex !important;
+                visibility:visible !important;
+                opacity:1 !important;
+                pointer-events:auto !important;
+                position:fixed !important;
+                top:.45rem !important;
+                left:.55rem !important;
+                z-index:1000002 !important;
+            }
+
+            [data-testid="stSidebarCollapsedControl"] button,
+            [data-testid="collapsedControl"] button {
+                display:flex !important;
+                visibility:visible !important;
+                opacity:1 !important;
+                min-width:42px !important;
+                min-height:42px !important;
+                border-radius:11px !important;
+                color:#f4fbff !important;
+                background:rgba(10,34,53,.98) !important;
+                border:1px solid rgba(32,214,232,.28) !important;
+                box-shadow:0 7px 20px rgba(0,0,0,.22) !important;
+            }
+
+            /* Mientras el sidebar está abierto, dejamos accesible
+               también el botón de ocultarlo. */
+            [data-testid="stSidebarCollapseButton"] {
+                display:flex !important;
+                visibility:visible !important;
+                opacity:1 !important;
             }
 
             [data-testid="stSidebar"] {
@@ -382,7 +428,7 @@ def aplicar_estilo_premium():
             }
 
             .block-container {
-                padding-top:.8rem !important;
+                padding-top:4rem !important;
                 padding-left:.9rem !important;
                 padding-right:.9rem !important;
                 padding-bottom:3rem !important;
@@ -3179,7 +3225,7 @@ def render_resultados_live_page(df):
 
 
 # =========================================================
-# V13.7 · NAVEGACIÓN UNIVERSAL REAL
+# V13.8 · NAVEGACIÓN MÓVIL + REAPERTURA SIDEBAR
 # =========================================================
 NAV_OPTIONS = [
     "⌂  Dashboard",
@@ -3208,7 +3254,7 @@ def _sync_nav_from_sidebar():
 st.markdown(
     '<div style="font-size:.72rem;font-weight:800;color:#20d6e8;'
     'letter-spacing:.06em;margin:.05rem 0 .25rem;">'
-    '📱 V13.7 · NAVEGACIÓN</div>',
+    '📱 V13.8 · NAVEGACIÓN</div>',
     unsafe_allow_html=True,
 )
 
